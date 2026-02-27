@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  notifications-svc-s06:
+    build: ./notifications_service
+    container_name: notifications-svc-s06
+    ports:
+      - "8171:8171"
+    command: uvicorn app:app --host 0.0.0.0 --port 8171
+
+  other-svc:
+    build: ./other_service
+    container_name: other-svc
+    ports:
+      - "8172:8172"
+    command: uvicorn app:app --host 0.0.0.0 --port 8172
+
+  nginx:
+    image: nginx:alpine
+    container_name: api-gateway
+    ports:
+      - "8080:80"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - notifications-svc-s06
+      - other-svc
