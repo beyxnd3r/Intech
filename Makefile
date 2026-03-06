@@ -1,4 +1,4 @@
-WEEK ?= 03
+WEEK ?= 04
 
 .PHONY: test
 
