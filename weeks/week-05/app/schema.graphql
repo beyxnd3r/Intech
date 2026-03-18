@@ -1,0 +1,16 @@
+
+
+type Item {
+  id: Int!
+  name: String!
+  sku: String!
+}
+
+type Query {
+  items: [Item!]!
+  item(id: Int!): Item
+}
+
+type Mutation {
+  createItem(name: String!, sku: String!): Item!
+}
