@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package sessions.v1;
+
+service SessionsService {
+  
+  rpc GetSession(SessionRequest) returns (SessionResponse);
+
+  
+  rpc Subscribe(SessionRequest) returns (stream SessionResponse);
+}
+
+message SessionRequest {
+  string id = 1;
+}
+
+message SessionResponse {
+  string id = 1;
+  string ip = 2;
+}
