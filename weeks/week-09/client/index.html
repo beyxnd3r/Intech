@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title> sessions-s06 WebRTC Chat</title>
+    </head>
+    <body>
+        <h2>WebRTC Chat</h2>
+
+        <input id="msg" placeholder="Enter message">
+        <button onclick="sendMesssage()">Send</button>
+
+        <ul id="chat"></ul>
+        <script>
+            const ws = new WebSocket("ws://localhost:8765");
+            let pc = new RTCPeerConnection();
+            let dataChannel;
+            const chat = document.getElementById("chat");
+
+            function log(text) {
+                const li = document.createElement("li");
+                li.innerText = text;
+                chat.appendChild(li);
+            }
+            function setupDataChannel(channel) {
+                dataChannel = channel;
+
+                dataChannel.onopen = () => {
+                    log("Opened Data Channel")
+                };
+                dataChannel.onmessage = (event) => {
+                    log("Peer: "+ event.data);
+                };
+            }
+
+            const isInitiator = location.hash == "#1";
+
+            if (isInitiator) {
+                setupDataChannel(pc.createDataChannel("chat"));
+
+            }
+
+            pc.ondatachannel = (event) => {
+                setupDataChannel(event.channel);
+            };
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    ws.send(JSON.stringify({
+                        type: "candidate",
+                        candidate: event.candidate
+                    }));
+                }
+            };
+
+            ws.onmessage = async (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type == "offer") {
+                    await pc.setRemoteDescription(data.offer);
+
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+
+                    ws.send(JSON.stringify({
+                        type: "answer",
+                        answer: answer
+                    }));
+
+                }
+                else if (data.type == "answer") {
+                    await pc.setRemoteDescription(data.answer);
+                }
+                else if (data.type == "candidate") {
+                    await pc.addIceCandidate(data.candidate);
+                }
+            };
+        async function start() {
+            if (isInitiator) {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                ws.send(JSON.stringify({
+                    type: "offer",
+                    offer: offer
+                }));
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("msg");
+            const text = input.value;
+
+            if (dataChannel && dataChannel.readyState === "open") {
+                dataChannel.send(text);
+                log("Me: " + text);
+            }
+            input.value = "";
+        }
+        start();
+        </script>
+    </body>
+</html>
