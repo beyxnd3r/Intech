@@ -1,0 +1,43 @@
+version: '3.8'
+# nginx в пути weeks/week-3/infra/nginx.conf
+services:
+  app:
+    build: .
+    ports:
+      - "8236:8236"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: tasks
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  
+  gateway:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

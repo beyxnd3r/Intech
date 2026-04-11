@@ -1,0 +1,27 @@
+version: '3.9'
+# nginx в пути weeks/week-3/infra/nginx.conf
+services:
+  app:
+    image: tasks-svc-s06
+    ports:
+      - "8236:8236"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8236/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - app-net
+  gateway:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - app
+    networks:
+      - app-net
+networks:
+  app-net:
+    driver: bridge
