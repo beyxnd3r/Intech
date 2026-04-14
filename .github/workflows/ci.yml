@@ -28,7 +28,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest flake8
 
-      # Линтер (не ломает пайплайн)
+      
       - name: Run linter
         run: |
           flake8 app || true
@@ -39,7 +39,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME .
+          docker build -t $IMAGE_NAME -f weeks/week-10/Dockerfile weeks/week-10
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
