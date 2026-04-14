@@ -11,10 +11,11 @@ jobs:
 
     env:
       IMAGE_NAME: devices-s06
+      PYTHONPATH: .
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -27,6 +28,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest flake8
 
+      # Линтер (не ломает пайплайн)
       - name: Run linter
         run: |
           flake8 app || true
@@ -38,8 +40,9 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t $IMAGE_NAME .
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifact
+          name: devices-s06-artifact
           path: .
