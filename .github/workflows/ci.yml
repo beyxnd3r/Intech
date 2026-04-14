@@ -39,7 +39,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME -f weeks/week-10/Dockerfile weeks/week-10
+          docker build -t $IMAGE_NAME -f weeks/week-10/Dockerfile .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
