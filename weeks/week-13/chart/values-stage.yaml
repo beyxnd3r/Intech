@@ -1,0 +1,6 @@
+replicaCount: 2
+image:
+  repository: products-s06
+  tag: "stage"
+service:
+  port: 8000

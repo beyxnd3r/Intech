@@ -1,0 +1,11 @@
+replicaCount: 1
+image:
+  repository: products-s06
+  tag: "dev"
+resources:
+  requests: 
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "128Mi"

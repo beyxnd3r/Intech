@@ -1,0 +1,11 @@
+replicaCount: 3
+image:
+  repository: products-s06
+  tag: "prod"
+resources:
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "512Mi"

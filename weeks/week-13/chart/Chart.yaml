@@ -1,0 +1,6 @@
+apiVersion: v2
+name: products-app
+description: Helm chart for products-s06
+type: application
+version: 0.1.0
+appVersion: "1.0"
