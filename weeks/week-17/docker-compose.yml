@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  events:
+    build: ./events_service
+    ports:
+      - "8257:8257"
+
+  grpc:
+    build: ./grpc_service
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8080:80"
+    depends_on:
+      - events
