@@ -1,48 +1,119 @@
-name: CI Pipeline
+﻿name: Week 17 CI/CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build:
+  test-build-and-package:
     runs-on: ubuntu-latest
 
     env:
-      IMAGE_NAME: devices-s06
       PYTHONPATH: .
+      WEEK: 17
+      COMPOSE_FILE: weeks/week-17/docker-compose.yml
+      CHART_PATH: weeks/week-17/helm/events-s06
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest flake8
 
-      
-      - name: Run linter
+      - name: Run week 17 tests
+        run: make test WEEK=$WEEK
+
+      - name: Validate Docker Compose config
+        run: docker compose -f $COMPOSE_FILE config --quiet
+
+      - name: Prepare image names
         run: |
-          flake8 app || true
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_REGISTRY=ghcr.io/$OWNER" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - name: Run tests
+      - name: Build events-svc image
+        run: docker build -t events-svc:ci -t $IMAGE_REGISTRY/events-svc:$IMAGE_TAG weeks/week-17/events_service
+
+      - name: Build events-grpc-svc image
+        run: docker build -t events-grpc-svc:ci -t $IMAGE_REGISTRY/events-grpc-svc:$IMAGE_TAG weeks/week-17/grpc_service
+
+      - name: Build gateway image
+        run: docker build -t gateway:ci -t $IMAGE_REGISTRY/gateway:$IMAGE_TAG weeks/week-17/gateway
+
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Lint Helm chart
+        run: helm lint $CHART_PATH
+
+      - name: Render Kubernetes manifests
         run: |
-          pytest
+          helm template events-s06 $CHART_PATH \
+            --set images.events.repository=$IMAGE_REGISTRY/events-svc \
+            --set images.grpc.repository=$IMAGE_REGISTRY/events-grpc-svc \
+            --set images.gateway.repository=$IMAGE_REGISTRY/gateway \
+            --set images.events.tag=$IMAGE_TAG \
+            --set images.grpc.tag=$IMAGE_TAG \
+            --set images.gateway.tag=$IMAGE_TAG
 
-      - name: Build Docker image
-        run: |
-          docker build -t $IMAGE_NAME -f weeks/week-10/Dockerfile .
+      - name: Package Helm chart
+        run: helm package $CHART_PATH --destination dist
 
-      - name: Upload artifact
+      - name: Upload Helm package
         uses: actions/upload-artifact@v4
         with:
-          name: devices-s06-artifact
-          path: .
+          name: events-s06-helm-chart
+          path: dist/*.tgz
+
+      - name: Create Kubernetes cluster for CD
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: events-s06-cd
+
+      - name: Load images into Kubernetes cluster
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          kind load docker-image events-svc:ci --name events-s06-cd
+          kind load docker-image events-grpc-svc:ci --name events-s06-cd
+          kind load docker-image gateway:ci --name events-s06-cd
+
+      - name: Deploy with Helm to Kubernetes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          helm upgrade --install events-s06 $CHART_PATH \
+            --set images.events.repository=events-svc \
+            --set images.grpc.repository=events-grpc-svc \
+            --set images.gateway.repository=gateway \
+            --set images.events.tag=ci \
+            --set images.grpc.tag=ci \
+            --set images.gateway.tag=ci \
+            --set images.events.pullPolicy=IfNotPresent \
+            --set images.grpc.pullPolicy=IfNotPresent \
+            --set images.gateway.pullPolicy=IfNotPresent
+
+      - name: Verify Kubernetes deployment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          kubectl rollout status deployment/events-svc --timeout=120s
+          kubectl rollout status deployment/events-grpc-svc --timeout=120s
+          kubectl rollout status deployment/gateway --timeout=120s
+          kubectl get pods,svc
