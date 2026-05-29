@@ -1,78 +1,81 @@
+
 # Architecture (events-s06)
 
 ## 1. Общее описание
 
-Проект представляет собой микросервисную систему для управления событиями (events).
+Проект `events-s06` — микросервисная система для управления событиями на основе варианта `variants/431/s06/week-17.json`.
 
-Система состоит из 3 сервисов:
-- events-service (REST API)
-- grpc-service (внутренний сервис)
-- gateway (nginx)
+Система состоит из 3 компонентов:
 
----
+- `events-svc` — REST API на FastAPI для ресурсов `events`.
+- `events-grpc-svc` — внутренний gRPC-сервис.
+- `gateway` — Nginx gateway, который принимает внешние HTTP-запросы.
 
-## 2. Взаимодействие сервисов
+## 2. Состав и технология реализации
 
-Схема работы:
+- Ресурс: `events`.
+- Сущность: `event`.
+- Дополнительное поле: `location: str`.
+- REST-сервис: `events-svc`, внутренний порт `8257`, внешний порт в Docker Compose `8130`.
+- Gateway route: `/api/events` -> `events-svc:8257`.
+- Gateway: внутренний порт `8080`, внешний порт в Docker Compose `8085`.
+- gRPC-сервис: `events-grpc-svc`, порт `8131`.
+- Kubernetes app/container из варианта: `events-app` / `events-container`.
+- Код проекта: `events-s06`.
 
-Client → Gateway → REST API → gRPC сервис
+## 3. Взаимодействие сервисов
 
-- Клиент отправляет HTTP-запрос
-- Gateway принимает и проксирует его
-- REST сервис обрабатывает запрос
-- (опционально) обращается к gRPC сервису
+```text
+Client -> Gateway:8085 -> events-svc:8257
+                 -> events-grpc-svc:8131
+```
 
----
+- Клиент отправляет HTTP-запрос на `http://localhost:8085/api/events`.
+- Gateway проксирует запрос в `events-svc`.
+- `events-svc` обрабатывает REST-запросы и хранит события в памяти (или в выбранном хранилище).
+- `events-grpc-svc` запускает внутренний gRPC-сервер на порту `8131`.
 
-## 3. Сервисы
+## 4. REST API
 
-### 3.1 events-service
-- Тип: REST API (FastAPI)
-- Порт: 8257
-- Назначение:
-  - обработка HTTP-запросов
-  - создание и получение событий
-- Хранение данных:
-  - in-memory (список)
+- `GET /health` — healthcheck для Docker Compose.
+- `GET /api/events` — список событий.
+- `POST /api/events` — создание события.
+- `PUT /api/events/{event_id}` — обновление события.
+- `DELETE /api/events/{event_id}` — удаление события.
 
----
+Swagger UI FastAPI доступен по адресу:
 
-### 3.2 grpc-service
-- Тип: gRPC сервис
-- Порт: 50051
-- Назначение:
-  - внутренняя бизнес-логика
-  - быстрый обмен между сервисами
+```text
+http://localhost:8130/docs
+```
 
----
+## 5. Инфраструктура
 
-### 3.3 gateway
-- Тип: Nginx
-- Порт: 8080 (наружу), 80 (внутри)
-- Назначение:
-  - единая точка входа
-  - маршрутизация запросов
+### Docker Compose
 
----
-
-## 4. Протоколы
-
-- REST (HTTP/JSON) — клиент → сервер
-- gRPC (HTTP/2 + Protobuf) — между сервисами
-
----
-
-## 5. Сеть
-
-Все сервисы работают в одной Docker-сети и обращаются друг к другу по именам:
-- http://events:8257
-- http://grpc:50051
-
----
-
-## 6. Запуск
-
-Проект запускается одной командой:
+Локальный запуск производится одной командой:
 
 ```bash
-docker-compose up --build
+docker compose up --build
+```
+
+Сервисы работают в сети `events-network`.
+
+### Helm
+
+Helm chart находится в `weeks/week-17/helm/events-s06` и содержит манифесты для Kubernetes для всех трёх сервисов:
+
+- Deployment/Service для `events-svc`.
+- Deployment/Service для `events-grpc-svc`.
+- Deployment/Service для `gateway`.
+
+### CI/CD
+
+GitHub Actions workflow `.github/workflows/ci.yml` выполняет:
+
+- сборку и проверку зависимостей;
+- тесты `make test WEEK=17`;
+- сборку Docker-образов;
+- `helm lint`;
+- `helm template`;
+- упаковку Helm chart как артефакт.
