@@ -1,0 +1,44 @@
+projectCode: events-s06
+
+images:
+  events:
+    repository: events-s06
+    tag: latest
+    pullPolicy: IfNotPresent
+  grpc:
+    repository: events-s06-grpc
+    tag: latest
+    pullPolicy: IfNotPresent
+  gateway:
+    repository: events-s06-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+events:
+  name: events-svc
+  app: events-app
+  container: events-container
+  port: 8257
+
+grpc:
+  name: events-grpc-svc
+  port: 8131
+
+gateway:
+  name: gateway
+  port: 8080
+  servicePort: 8085
+  prefix: /api
+
+service:
+  type: ClusterIP
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

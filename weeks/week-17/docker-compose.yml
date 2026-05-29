@@ -1,17 +1,42 @@
 version: "3.9"
 
 services:
-  events:
-    build: ./events_service
+  events-svc:
+    build:
+      context: ./events_service
     ports:
-      - "8257:8257"
+      - "8130:8257"
+    networks:
+      - events-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8257/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  grpc:
-    build: ./grpc_service
+  events-grpc-svc:
+    build:
+      context: ./grpc_service
+    ports:
+      - "8131:8131"
+    networks:
+      - events-network
+    restart: unless-stopped
 
   gateway:
-    build: ./gateway
+    build:
+      context: ./gateway
     ports:
-      - "8080:80"
+      - "8085:8080"
+    networks:
+      - events-network
     depends_on:
-      - events
+      events-svc:
+        condition: service_healthy
+      events-grpc-svc:
+        condition: service_started
+
+networks:
+  events-network:
+    driver: bridge
