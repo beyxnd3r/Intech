@@ -34,14 +34,14 @@ spec:
               containerPort: {{ .Values.gateway.port }}
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
             initialDelaySeconds: 10
             periodSeconds: 20
