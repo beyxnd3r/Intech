@@ -7,11 +7,17 @@ metadata:
     component: grpc
     project: {{ .Values.projectCode }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.grpc.replicaCount }}
   selector:
     matchLabels:
       app: {{ .Values.grpc.name }}
       component: grpc
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 10
   template:
     metadata:
       labels:
@@ -26,6 +32,17 @@ spec:
           ports:
             - name: grpc
               containerPort: {{ .Values.grpc.port }}
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 10
+            periodSeconds: 20
           resources:
 {{ toYaml .Values.resources | indent 12 }}
 ---

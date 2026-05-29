@@ -25,12 +25,14 @@ events:
 grpc:
   name: events-grpc-svc
   port: 8131
+  replicaCount: 2
 
 gateway:
   name: gateway
   port: 8080
   servicePort: 8085
   prefix: /api
+  replicaCount: 2
 
 service:
   type: ClusterIP
